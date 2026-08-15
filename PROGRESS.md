@@ -88,3 +88,26 @@ Domain: **Research Paper Digest** — RAG assistant over arXiv-style research pa
 - **Verified**: ran 4 test queries through the full routing → retrieval → rerank pipeline. All 4 showed substantial reordering (6–8 rank changes out of 8–9 candidates each) — re-ranking is doing real work, not a no-op.
 - **README evidence captured** (query: *"What optimizer and learning rate schedule was used to train the Transformer?"*): FAISS's #1 result (`attention-is-all-you-need_p8_c0`) dropped to #3 after re-ranking; the actual best chunk (`attention-is-all-you-need_p7_c1`, FAISS rank #3) moved to #1. A `bert-pretraining` chunk that FAISS ranked #2 — plausible only by surface similarity, not actually about the Transformer's optimizer — correctly dropped to #5 post-rerank. Full JSON saved for the README's before/after section.
 - ✅ Step 6 checkpoint met.
+
+## 2026-08-15 — Environment fix: `_lzma` module
+
+- Hit a real blocker installing `ragas`: its dependency chain (via HuggingFace `datasets`) imports Python's stdlib `lzma` unconditionally, which never compiled during the original pyenv Python 3.11.9 build (no `xz`/liblzma available without Homebrew — this was flagged as a non-fatal warning back at initial environment setup, and it came due).
+- Fix: built `xz` 5.6.3 from source into a user-local prefix (`~/local-libs`, no admin rights needed), then reinstalled Python 3.11.9 via pyenv with `CPPFLAGS`/`LDFLAGS`/`PKG_CONFIG_PATH` pointed at it. Confirmed `import lzma` now works.
+- Recreated the backend `.venv` from scratch against the fixed Python build (old venv was linked against the pre-fix interpreter) and reinstalled all requirements — verified clean.
+
+## 2026-08-15 — Step 7: RAGAS evaluation
+
+This was flagged in the plan as the highest API-churn risk in the stack, so every claim below was verified against the actually-installed `ragas==0.4.3` package rather than assumed from docs/training data. Three real incompatibilities were found and fixed; full detail is in the module docstring of `backend/app/services/evaluation.py`:
+
+1. **Import-breaking dependency conflict**: `ragas.llms.base` unconditionally imports `langchain_community.chat_models.vertexai.ChatVertexAI` (dead code path for the deprecated `LangchainLLMWrapper` we don't use), which was removed from `langchain-community` 0.4.x. Fixed by pinning `langchain-community==0.3.31` (last version with that module) — our own FAISS usage is unaffected.
+2. **Sync-vs-async client**: `ragas.llms.llm_factory(provider="anthropic", ...)` needs `anthropic.AsyncAnthropic`, not the sync `Anthropic` client — `ascore()` raises `TypeError` at call time on a sync client with no earlier warning.
+3. **Sampling-params incompatibility with current Claude models**: ragas's `InstructorLLM` always sends both `temperature` and `top_p` to the provider by default, with no public way to omit one. Current Claude models reject that combination outright (`claude-haiku-4-5-20251001`), and `claude-sonnet-5` deprecates `temperature` entirely — confirmed both errors directly against the live API before concluding this wasn't a config mistake on our side. Worked around by overwriting the constructed LLM's `model_args` attribute post-construction to just `{"max_tokens": 4096}` (also bumped from ragas's 1024 default — the faithfulness metric's NLI-verdict step can truncate at that ceiling).
+4. Confirmed real export/method names by inspecting the installed package directly (`ragas.metrics.collections.{Faithfulness, AnswerRelevancy, ContextPrecisionWithReference}`, `.ascore(...)`, `MetricResult.value`) rather than trusting any single doc source — `AnswerRelevancy` is the real name (not `ResponseRelevancy`, which appeared in some outside references during planning).
+
+Architecture built:
+- `backend/app/services/pipeline.py`: `answer_question(store, question)` — the actual end-to-end composition (route → multi-query retrieve → rerank → generate) that Steps 4–6 built as separate, independently-tested stages. This is what both the golden-set eval and the future `/api/query` endpoint call.
+- `backend/app/data/golden_eval_set.json`: 8 hand-written question/reference pairs covering all 3 papers (including cross-paper questions), used for `context_precision` (needs a reference answer a live query doesn't have).
+- `backend/app/services/evaluation.py`: `score_live_query()` (faithfulness + answer_relevancy, reference-free, safe on real traffic), `score_context_precision()` (golden-set only), `run_golden_eval()` (runs the full pipeline + all 3 metrics against the golden set, logs each to `eval_log.jsonl`).
+
+**Verified**: ran `run_golden_eval()` against the real index/pipeline. Aggregate: faithfulness 0.95, answer_relevancy 0.68, context_precision 0.56 — scores present, varied, and plausible (not all 1.0, not missing), satisfying the grading rubric directly. Two `answer_relevancy=0.0` results were sanity-checked individually rather than assumed to be a bug: both were cases where the model honestly said the retrieved context didn't fully cover the question (e.g. BERT's MLM/NSP task *names* weren't present in the top-4 reranked chunks for that query) — correct, honest low scores that also surface a real, documentable retrieval-coverage limitation, not hallucination. Good material for the README rather than something to hide.
+- ✅ Step 7 checkpoint met.

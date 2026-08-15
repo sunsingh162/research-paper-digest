@@ -15,8 +15,14 @@ tiktoken>=0.13
 sentence-transformers>=3.3
 langchain-huggingface>=0.1
 faiss-cpu>=1.9
-langchain-community>=0.3.20
+# Pinned (not >=): ragas (below) imports langchain_community.chat_models.vertexai
+# unconditionally, which was removed in langchain-community 0.4.x -- breaks ragas
+# import entirely on newer versions. See evaluation.py module docstring.
+langchain-community==0.3.31
 
 # Generation (Anthropic Claude)
 langchain-anthropic>=1.5
 anthropic>=0.40
+
+# RAGAS evaluation
+ragas==0.4.3
