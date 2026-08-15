@@ -10,3 +10,9 @@ pypdf>=5.1
 langchain-core>=1.5
 langchain-text-splitters>=0.3
 tiktoken>=0.13
+
+# Embeddings, vector store (local, zero-cost)
+sentence-transformers>=3.3
+langchain-huggingface>=0.1
+faiss-cpu>=1.9
+langchain-community>=0.3.20

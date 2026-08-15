@@ -41,3 +41,19 @@ Domain: **Research Paper Digest** — RAG assistant over arXiv-style research pa
 - **Known limitation** (to note in the final README): section-heading detection is best-effort — multi-column academic PDF text extraction via `pypdf` doesn't preserve reading order perfectly, so some sections are missed. Page-number citations are exact; section labels are a bonus, not guaranteed.
 - **Verified**: ran ingestion against all 3 seeded PDFs — 102 total chunks, page ranges exactly matching each paper's real length (1–15, 1–16, 1–19), sample chunk inspected with correct metadata and readable content.
 - ✅ Step 2 checkpoint met.
+
+## 2026-08-15 — Git identity & authorship fix
+
+- Set local (repo-scoped, not global) git identity to `Sunny Kumar Singh <sunsingh162@gmail.com>` at the user's request.
+- Rewrote both existing commits (`git filter-branch`) to fix author/committer and strip the `Co-Authored-By: Claude` trailer, then force-pushed — safe since the repo was brand-new with no other collaborators. Future commits from this session drop the co-author trailer entirely.
+- Confirmed via `git fetch` + `git cat-file` that the pushed history is clean (both commits solely authored by Sunny Kumar Singh, no co-author trailer). GitHub's own "Contributors" sidebar still briefly showed a cached `claude` entry from before the rewrite — that's a GitHub-side stats cache that lags behind a force-pushed rewrite; nothing left in the actual git history for it to be reading.
+- Confirmed with the user: per the program's own Submission Guidelines doc, AI-assisted coding is explicitly permitted ("expected, not penalized") — this was a personal preference about commit display, not an academic-integrity requirement.
+
+## 2026-08-15 — Step 3: Embeddings & FAISS index
+
+- `backend/app/services/embeddings.py`: `langchain_huggingface.HuggingFaceEmbeddings` wrapping `sentence-transformers/all-MiniLM-L6-v2`, `normalize_embeddings=True`.
+- `backend/app/services/vectorstore.py`: `langchain_community.vectorstores.FAISS` with `DistanceStrategy.MAX_INNER_PRODUCT` (correct pairing with normalized embeddings = cosine similarity). `build_index`, `save_index`/`load_index` (disk persistence, `allow_dangerous_deserialization=True` — safe, only ever loads an index this app wrote), `add_documents` (for future user uploads), `query_index` (top-k with scores).
+- **Dependency note**: `langchain-community` is in a long-term deprecation/sunset process. Checked for the standalone replacement (`langchain-faiss` on PyPI) — it's still an empty placeholder package (exports nothing usable as of this check), so stayed on `langchain_community.vectorstores.FAISS`, which is fully functional today. Worth re-checking `langchain-faiss` maturity before the final submission if time allows.
+- **Wired into the app itself** (not just a standalone script): `app/state.py` holds an in-memory `AppState` (FAISS store + per-paper metadata registry — appropriate for this single-process capstone deployment). `app/main.py` now uses a FastAPI `lifespan` handler that loads a cached index from disk if present, otherwise builds one from the seeded PDFs (fast — only 3 papers) and persists it. `GET /health` now reports `index_loaded`, `num_chunks`, `num_papers` for real.
+- **Verified**: fresh build (deleted `storage/faiss_index/`) → app startup rebuilds from the 3 seeded PDFs → `/health` returns `{"index_loaded": true, "num_chunks": 102, "num_papers": 3}`. Separately verified in a script: same question run twice returns byte-identical top-k results and scores (repeatable); two different questions about different papers (Transformer self-attention vs. BERT masked-LM pretraining) return entirely disjoint top-3 chunks, each correctly pulled from the matching paper (query-sensitive, not hardcoded).
+- ✅ Step 3 checkpoint met.
