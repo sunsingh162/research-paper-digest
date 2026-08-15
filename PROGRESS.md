@@ -135,3 +135,12 @@ Before building the UI, assembled the actual FastAPI routers tying every prior s
 - **Bug caught and fixed via browser console check**: `run_golden_eval()`'s log entries (Step 7) were missing a `query_id` field entirely, unlike live-query entries -- caused a real "duplicate key" React warning in the eval dashboard table (multiple `undefined` keys), not just a cosmetic issue. Fixed by adding `uuid.uuid4().hex` to every golden-eval log entry too, matching the live-query log schema. Re-ran the golden eval and the full browser test afterward to confirm the fix and a clean console.
 - **Verified live in a real headless-Chromium browser session** (Playwright, same approach as Step 1): home page loads with all 3 seeded papers listed → asked a real question → grounded answer with correct citations rendered within the pipeline's ~15-20s → source chip expands to show the snippet → eval badge resolves with real faithfulness/relevancy scores after the background task completes → eval dashboard loads with the full recent-query table and re-ranking before/after panels populated from real logged data (consistently 5-19 chunks changing rank per query across the whole log). Zero console errors on the final pass. Screenshots captured.
 - ✅ Step 8 checkpoint met: a reviewer can upload a PDF and get a cited answer well within 60 seconds, no setup help needed.
+
+## 2026-08-15 — Step 9: README
+
+Wrote the root `README.md`: domain statement up front (per submission guidelines), Mermaid architecture diagram, tech stack table, full project structure, local setup instructions (backend + frontend), API reference table, the re-ranking before/after example pulled from real logged data (optimizer question, 8/9 chunks changed rank), real aggregate RAGAS scores from the accumulated golden-eval log (faithfulness 0.961, answer_relevancy 0.681, context_precision 0.562 across 16 scored items), an honest explanation of the two `answer_relevancy=0.0` results, and a Known Limitations section covering section-detection accuracy, upload ephemerality, deferred-inline RAGAS scores, and the `langchain-community` pin.
+
+Deployment section left as a placeholder pending Step 10 — will be filled in with the live URL and finalized once deployed.
+
+Spot-verified the documented commands actually work as written: `python scripts/fetch_papers.py` run standalone from `backend/` behaves exactly as documented (idempotent skip-if-present).
+- ✅ Step 9 checkpoint met (deployment/live-URL portion pending Step 10).
