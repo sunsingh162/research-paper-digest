@@ -112,7 +112,7 @@ def load_golden_set() -> list[dict[str, str]]:
     return json.loads(GOLDEN_SET_PATH.read_text())
 
 
-def _now_iso() -> str:
+def now_iso() -> str:
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 
 
@@ -133,7 +133,7 @@ async def run_golden_eval(store) -> dict[str, Any]:
         context_precision = await score_context_precision(question, reference, contexts)
 
         entry = {
-            "timestamp": _now_iso(),
+            "timestamp": now_iso(),
             "question": question,
             "answer_preview": result.answer.answer[:200],
             "route_type": result.route_type,

@@ -4,7 +4,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import health
+from app.routers import eval as eval_router
+from app.routers import health, papers, query, upload
 from app.services import ingestion
 from app.services import vectorstore as vs
 from app.state import PaperMeta, app_state
@@ -54,3 +55,7 @@ app.add_middleware(
 )
 
 app.include_router(health.router)
+app.include_router(papers.router)
+app.include_router(upload.router)
+app.include_router(query.router)
+app.include_router(eval_router.router)
