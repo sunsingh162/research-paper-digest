@@ -81,3 +81,10 @@ Domain: **Research Paper Digest** — RAG assistant over arXiv-style research pa
   - Single-fact question ("What dataset was used to pretrain BERT?") → correctly classified `single_fact`, sub_queries = `[original question]` unchanged.
   - Genuine multi-part question ("What is the self-attention mechanism in the Transformer, and how does BERT use masked language modeling for pretraining?") → correctly classified `multi_part`, decomposed into 2 clean atomic sub-questions (one per paper). Merged retrieval then pulled chunks from **both** `attention-is-all-you-need` and `bert-pretraining` — i.e. both parts of the question demonstrably retrieved for, not just whichever paper scored higher on the combined query.
 - ✅ Step 5 checkpoint met.
+
+## 2026-08-15 — Step 6: Re-ranking
+
+- `backend/app/services/reranking.py`: `sentence_transformers.CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")` rescoring merged FAISS candidates. Every call logs pre-rerank (FAISS) and post-rerank (cross-encoder) ordering, plus a computed `rank_changes` diff, to `backend/storage/logs/rerank_log.jsonl`.
+- **Verified**: ran 4 test queries through the full routing → retrieval → rerank pipeline. All 4 showed substantial reordering (6–8 rank changes out of 8–9 candidates each) — re-ranking is doing real work, not a no-op.
+- **README evidence captured** (query: *"What optimizer and learning rate schedule was used to train the Transformer?"*): FAISS's #1 result (`attention-is-all-you-need_p8_c0`) dropped to #3 after re-ranking; the actual best chunk (`attention-is-all-you-need_p7_c1`, FAISS rank #3) moved to #1. A `bert-pretraining` chunk that FAISS ranked #2 — plausible only by surface similarity, not actually about the Transformer's optimizer — correctly dropped to #5 post-rerank. Full JSON saved for the README's before/after section.
+- ✅ Step 6 checkpoint met.
