@@ -72,3 +72,12 @@ Domain: **Research Paper Digest** — RAG assistant over arXiv-style research pa
   - Answerable question ("What is the self-attention mechanism in the Transformer architecture?") → correct, grounded answer citing 3 real chunks from the Attention paper, pages 2/3/5 — all citations verified to point to chunks that actually discuss self-attention.
   - Out-of-scope question ("What is the capital of France?", deliberately run against retrieved-but-irrelevant Transformer-paper context) → model correctly refused: *"This isn't covered in the provided document(s)... They do not contain information about the capital of France."* — empty `cited_chunk_ids`, no hallucination.
 - ✅ Step 4 checkpoint met.
+
+## 2026-08-15 — Step 5: Query routing & decomposition
+
+- `backend/app/services/routing.py`: one structured-output Claude call (`RouteDecision {query_type, sub_queries}`) classifying `single_fact` / `multi_part` / `summarization`. For multi-part questions, decomposition into 2+ atomic sub-questions happens in the *same* call (no extra round trip).
+- `backend/app/services/retrieval.py`: `retrieve_merged()` runs FAISS similarity search per sub-query, merges results across sub-queries, dedupes by `chunk_id` keeping each chunk's best score, returns sorted descending.
+- **Verified** against the real index:
+  - Single-fact question ("What dataset was used to pretrain BERT?") → correctly classified `single_fact`, sub_queries = `[original question]` unchanged.
+  - Genuine multi-part question ("What is the self-attention mechanism in the Transformer, and how does BERT use masked language modeling for pretraining?") → correctly classified `multi_part`, decomposed into 2 clean atomic sub-questions (one per paper). Merged retrieval then pulled chunks from **both** `attention-is-all-you-need` and `bert-pretraining` — i.e. both parts of the question demonstrably retrieved for, not just whichever paper scored higher on the combined query.
+- ✅ Step 5 checkpoint met.
