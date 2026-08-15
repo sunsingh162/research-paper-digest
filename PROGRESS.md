@@ -26,3 +26,18 @@ Domain: **Research Paper Digest** — RAG assistant over arXiv-style research pa
 - ✅ Step 1 checkpoint met. Servers stopped after verification.
 
 **Environment note for future steps:** this shell's default `PATH` doesn't have `node`/`npm`/`python` on it automatically — each new terminal needs `nvm`/`pyenv` loaded (see `~/.zshrc`, added during environment setup) and the backend venv activated (`source backend/.venv/bin/activate`).
+
+## 2026-08-15 — GitHub setup
+
+- Installed GitHub CLI (`gh`, to `~/bin`, no admin rights needed) and authenticated as `sunsingh162`.
+- Created public repo **https://github.com/sunsingh162/research-paper-digest**, pushed Step 1.
+- Note: local git commit identity is currently auto-detected (`simranvaishnav@Simrans-MacBook-Air.local`) rather than explicitly configured — flagged to the user; can be corrected with `git commit --amend --reset-author` if they want a different name/email on commits. Did not touch global git config.
+
+## 2026-08-15 — Step 2: Ingestion & chunking
+
+- Sourced the 3-paper seed corpus (real arXiv papers, not filler): *Attention Is All You Need* (1706.03762, 15pp), *BERT* (1810.04805, 16pp), *Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks* (2005.11401, 19pp) — thematically fitting since it's literally the RAG paper.
+- **Decision**: PDFs are *not* committed to the repo (third-party copyrighted arXiv content) — instead `backend/scripts/fetch_papers.py` downloads them from arXiv on demand. `.gitignore` excludes `backend/app/data/papers/*.pdf`.
+- `backend/app/services/ingestion.py`: `pypdf` per-page text extraction (preserves page numbers for citations) + best-effort section-heading detection (regex + known-heading-word list) + token-aware chunking via `RecursiveCharacterTextSplitter.from_tiktoken_encoder` (650 tokens/chunk, 100 token overlap ≈ 15%, per the guide's 500–800 token / 10–15% overlap spec). Chunking is done per-page (not across page boundaries) so every chunk's page number is exact. Each chunk gets `{chunk_id, paper_id, filename, page, section, chunk_index}` metadata.
+- **Known limitation** (to note in the final README): section-heading detection is best-effort — multi-column academic PDF text extraction via `pypdf` doesn't preserve reading order perfectly, so some sections are missed. Page-number citations are exact; section labels are a bonus, not guaranteed.
+- **Verified**: ran ingestion against all 3 seeded PDFs — 102 total chunks, page ranges exactly matching each paper's real length (1–15, 1–16, 1–19), sample chunk inspected with correct metadata and readable content.
+- ✅ Step 2 checkpoint met.
