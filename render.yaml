@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: research-paper-digest-backend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: GENERATION_MODEL
+        value: claude-haiku-4-5-20251001
+      - key: ROUTING_MODEL
+        value: claude-haiku-4-5-20251001
+      - key: RAGAS_JUDGE_MODEL
+        value: claude-haiku-4-5-20251001
+      - key: CORS_ORIGINS
+        value: http://localhost:3000
