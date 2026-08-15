@@ -57,3 +57,18 @@ Domain: **Research Paper Digest** — RAG assistant over arXiv-style research pa
 - **Wired into the app itself** (not just a standalone script): `app/state.py` holds an in-memory `AppState` (FAISS store + per-paper metadata registry — appropriate for this single-process capstone deployment). `app/main.py` now uses a FastAPI `lifespan` handler that loads a cached index from disk if present, otherwise builds one from the seeded PDFs (fast — only 3 papers) and persists it. `GET /health` now reports `index_loaded`, `num_chunks`, `num_papers` for real.
 - **Verified**: fresh build (deleted `storage/faiss_index/`) → app startup rebuilds from the 3 seeded PDFs → `/health` returns `{"index_loaded": true, "num_chunks": 102, "num_papers": 3}`. Separately verified in a script: same question run twice returns byte-identical top-k results and scores (repeatable); two different questions about different papers (Transformer self-attention vs. BERT masked-LM pretraining) return entirely disjoint top-3 chunks, each correctly pulled from the matching paper (query-sensitive, not hardcoded).
 - ✅ Step 3 checkpoint met.
+
+## 2026-08-15 — Anthropic API key & billing
+
+- User created an Anthropic API key and added $5 in credits (Claude Console billing). Key saved to `backend/.env` (git-ignored, confirmed via `git check-ignore`, never printed to logs/output).
+- Verified the key works with a live `ChatAnthropic` call before proceeding.
+
+## 2026-08-15 — Step 4: LCEL generation chain
+
+- `backend/app/models/schemas.py`: `SourceChunk` (chunk_id, paper_id, page, section, snippet) and `GenerationOutput` (answer, cited_chunk_ids).
+- **Key design decision**: the LLM only ever outputs `cited_chunk_ids` (which chunk_ids it used) — never page numbers, sections, or snippets directly. The service layer (`generation.py`) resolves those `chunk_id`s back to the *actual* Document metadata afterwards. This avoids a real citation-hallucination risk: an LLM asked to reproduce a page number in its own output can get it wrong even when the underlying answer is correctly grounded; sourcing it from ground-truth chunk metadata instead makes every citation mechanically correct by construction.
+- `backend/app/services/generation.py`: LCEL chain = `ChatPromptTemplate | ChatAnthropic.with_structured_output(GenerationOutput, method="json_schema")`. System prompt forces context-only answers and an explicit "not covered in the provided document(s)" response when the context doesn't contain the answer, instead of guessing. `format_context()` renders each chunk with a `[chunk_id=... | paper=... | page=... | section=...]` header so the model can cite by chunk_id.
+- **Verified** against the real FAISS index from Step 3 (no routing/re-ranking wired in yet — that's Steps 5–6, this only tests the generation stage in isolation):
+  - Answerable question ("What is the self-attention mechanism in the Transformer architecture?") → correct, grounded answer citing 3 real chunks from the Attention paper, pages 2/3/5 — all citations verified to point to chunks that actually discuss self-attention.
+  - Out-of-scope question ("What is the capital of France?", deliberately run against retrieved-but-irrelevant Transformer-paper context) → model correctly refused: *"This isn't covered in the provided document(s)... They do not contain information about the capital of France."* — empty `cited_chunk_ids`, no hallucination.
+- ✅ Step 4 checkpoint met.

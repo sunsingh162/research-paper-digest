@@ -16,3 +16,7 @@ sentence-transformers>=3.3
 langchain-huggingface>=0.1
 faiss-cpu>=1.9
 langchain-community>=0.3.20
+
+# Generation (Anthropic Claude)
+langchain-anthropic>=1.5
+anthropic>=0.40
