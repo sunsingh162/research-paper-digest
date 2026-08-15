@@ -1,34 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getHealth } from "@/lib/api";
-
-type Status = "checking" | "online" | "offline";
+import { useState } from "react";
+import Link from "next/link";
+import ChatWindow from "@/components/ChatWindow";
+import UploadPanel from "@/components/UploadPanel";
+import type { Paper } from "@/lib/api";
 
 export default function Home() {
-  const [status, setStatus] = useState<Status>("checking");
-
-  useEffect(() => {
-    getHealth()
-      .then(() => setStatus("online"))
-      .catch(() => setStatus("offline"));
-  }, []);
+  const [papers, setPapers] = useState<Paper[]>([]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-zinc-50 font-sans dark:bg-black">
-      <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Research Paper Digest</h1>
-      <p className="text-zinc-600 dark:text-zinc-400">RAG assistant scaffold — backend status:</p>
-      <span
-        className={`rounded-full px-3 py-1 text-sm font-medium ${
-          status === "online"
-            ? "bg-green-100 text-green-800"
-            : status === "offline"
-              ? "bg-red-100 text-red-800"
-              : "bg-zinc-200 text-zinc-700"
-        }`}
-      >
-        {status}
-      </span>
+    <div className="flex h-screen">
+      <aside className="w-72 flex-shrink-0">
+        <UploadPanel onPapersChange={setPapers} />
+      </aside>
+      <main className="flex flex-1 flex-col">
+        <header className="flex items-center justify-between border-b border-zinc-200 p-3 dark:border-zinc-800">
+          <h1 className="font-semibold">Research Paper Digest</h1>
+          <Link href="/eval" className="text-xs text-blue-600 hover:underline">
+            Eval dashboard →
+          </Link>
+        </header>
+        <ChatWindow hasPapers={papers.length > 0} />
+      </main>
     </div>
   );
 }

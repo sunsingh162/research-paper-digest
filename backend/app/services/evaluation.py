@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import json
 import time
+import uuid
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -134,6 +135,7 @@ async def run_golden_eval(store) -> dict[str, Any]:
 
         entry = {
             "timestamp": now_iso(),
+            "query_id": uuid.uuid4().hex,
             "question": question,
             "answer_preview": result.answer.answer[:200],
             "route_type": result.route_type,
