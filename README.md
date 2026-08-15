@@ -4,7 +4,7 @@
 
 > Phase 1 capstone project, AI Engineering Masters Program. Architecturally equivalent to the reference single-source RAG project (embeddings → FAISS → LCEL chain → query routing/decomposition → cross-encoder re-ranking → RAGAS evaluation), built over a different domain and corpus, with independent implementation decisions documented throughout.
 
-**Live demo:** _pending deployment — see [Deployment](#deployment) below._
+**Submission: Option B — GitHub Repo Only.** See [Deployment](#deployment) for why, and the [Local Development](#setup--local-development) setup below — runnable from a fresh clone in well under 15 minutes.
 **Repo:** https://github.com/sunsingh162/research-paper-digest
 
 ---
@@ -208,4 +208,11 @@ Scores are genuinely varied, not uniformly 1.0 — e.g. two questions scored `an
 
 ## Deployment
 
-_To be completed: frontend on Vercel, backend on Railway (chosen for low-cost, always-on hosting with straightforward persistent volumes over Render's free tier, which cold-starts after 15 minutes idle and has no free persistent disk)._
+**This project ships as Option B — GitHub Repo Only**, per the submission guidelines' explicit provision for "projects with heavier local infra... that don't deploy cleanly to a free host." Here's what was actually tried, honestly reported:
+
+- A `Dockerfile` (repo root) and `render.yaml` are included and were used to actually deploy the backend to **Render's free tier**. The build succeeded end-to-end (image built, models baked in, seed PDFs fetched), but the container **crashed on startup with an out-of-memory error (>512Mi)** — PyTorch + `sentence-transformers` alone exceed Render free tier's 512MB RAM ceiling just loading the embedding model, before handling a single request. This is a hard platform limit, not a bug: the same code runs fine locally and would run fine on a paid tier with more RAM (Render Starter, Railway, etc.).
+- Rather than add an ongoing paid hosting cost for a course capstone, or risk destabilizing a fully-verified pipeline by swapping to a lighter (ONNX) embedding backend under time pressure, this was scoped down to a repo-only submission — an explicit, honest tradeoff rather than a silent limitation.
+- The frontend (Next.js) has no such constraint and would deploy to Vercel's free tier without issue if a memory-sufficient backend host were added later; `frontend/.env.local.example` and `NEXT_PUBLIC_API_BASE_URL` are already structured for that split-deployment setup.
+- **If you want to self-host**: `Dockerfile` + `render.yaml` work as-is on any Docker-capable host with ≥1GB RAM (Render Starter, Railway, Fly.io, a VPS). Point Vercel's `NEXT_PUBLIC_API_BASE_URL` at the resulting backend URL and set `CORS_ORIGINS` on the backend to the Vercel domain.
+
+Full investigation (build logs, the exact OOM point, and the decision trail) is in `PROGRESS.md`.
