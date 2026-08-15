@@ -1,0 +1,31 @@
+# Python
+backend/.venv/
+backend/venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Env files
+.env
+.env.local
+!*.env.example
+
+# Backend runtime data (rebuilt at startup / generated at runtime)
+backend/storage/faiss_index/*
+!backend/storage/faiss_index/.gitkeep
+backend/storage/logs/*.jsonl
+
+# Node / Next.js
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/.vercel/
+npm-debug.log*
+
+# OS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
